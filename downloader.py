@@ -23,24 +23,24 @@ except ImportError:
    
 
 class Downloader:
-    def __init__(self, url:str, user:str=None, pwd:str=None, dst_dir:str='.', notify=False):
+    def __init__(self, url:str, user:str=None, pwd:str=None, zips_dir:str='.', notify=False):
         self.url=url
         self.auth = HTTPBasicAuth(user, pwd) if user and pwd else None
-        self.dst_dir = Path(dst_dir)
+        self.zips_dir = Path(zips_dir)
         self.notify = notify
         
-        self.__make_dir()
+        self._make_dir(_dir=self.zips_dir)
         
         print('URL:', self.url)
         print('USER:', user,)
         print('PWD:', pwd)
-        print(f'Destination directory: {str(self.dst_dir.resolve())}')
+        print(f'Destination directory: {str(self.zips_dir.resolve())}')
         
-    def __make_dir(self):
+    def _make_dir(self, _dir: Path):
         """ Creates the destination folder if it doesnt exist already """
-        if not Path(self.dst_dir).is_dir():
-            print(f'Creating destination directory: {str(self.dst_dir)}')
-            self.dst_dir.mkdir(parents=True)
+        if not _dir.is_dir():
+            print(f'Creating directory: {_dir}')
+            _dir.mkdir(parents=True)
 
     def __get_url_content(self):
         response = self.get_request(self.url)
@@ -59,7 +59,9 @@ class Downloader:
         
         remote_filesize = int(response.headers.get('content-length', 0))
         
-        target_file = self.dst_dir / url_target_path
+        target_file = self.zips_dir / url_target_path
+        
+        self._make_dir(target_file.parent)
         
         if target_file.is_file():        
             local_filesize = target_file.stat().st_size
@@ -90,7 +92,7 @@ class Downloader:
             Response: url response
         """
         response = requests.get(full_target_url, auth = self.auth, stream=stream)
-        if response.status_code != 200: raise ConnectionError(f'Got response: {response}')
+        if response.status_code != 200: raise ConnectionError(f'URL:{full_target_url}\nGot response: {response}')
         
         return response
             
@@ -114,13 +116,13 @@ class Downloader:
         return self.__get_url_content()
 
     def download(self):
-        """ Downloads all dataset parts in sequencial order """
+        """ Downloads all dataset parts in sequential order """
         targets = self.get_targets_list()
         
         for target in targets:
             self.__download_target(target)
             
-        if self.notify: email_notif('Done downloading SiW')
+        if self.notify: email_notif('Done downloading dataset')
 
     def download_with_threads(self, max_threads:int=4):  
         """ Downloads all dataset parts using threads
@@ -145,7 +147,7 @@ class Downloader:
             for thread in threads:
                 thread.join()
         
-        if self.notify: email_notif('Done downloading SiW')
+        if self.notify: email_notif('Done downloading dataset')
 
 
 # ENDFILE
